@@ -17,7 +17,7 @@ crate-type = ["cdylib", "staticlib", "rlib"]
 # La bibliothèque `flutter_rust_bridge` est ajoutée en Phase 0, étape 5,
 # une fois le pont Flutter↔Rust validé par un projet témoin.
 [dependencies]
-od-core = { path = "../od-core" }
+od-core = { path = "../od-core", version = "0.1.0" }
 thiserror.workspace = true
 
 [lints]

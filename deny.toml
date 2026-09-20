@@ -23,6 +23,15 @@ all-features = true
 version = 2
 
 # Liste blanche — licences permissives compatibles MPL-2.0.
+#
+# C'est une liste blanche STRICTE : tout ce qui n'y figure pas est refusé.
+# La liste noire explicite (`deny = [...]`) a été retirée de cargo-deny
+# (cf. EmbarkStudios/cargo-deny#611) — elle faisait double emploi avec cette
+# approche, plus simple et plus sûre : une licence inconnue est rejetée par
+# défaut, au lieu d'être acceptée faute d'avoir été listée.
+#
+# Sont donc refusés sans avoir à les nommer : toutes les variantes GPL, AGPL
+# et SSPL, ainsi que toute licence non déclarée.
 allow = [
     "MIT",
     "Apache-2.0",
@@ -36,20 +45,6 @@ allow = [
     "CC0-1.0",
     "MPL-2.0",
     "OpenSSL",
-]
-
-# Licences explicitement refusées, avec leur motif.
-deny = [
-    { name = "GPL-2.0", reason = "copyleft fort : contaminerait la licence d'opendial" },
-    { name = "GPL-2.0-only", reason = "copyleft fort : contaminerait la licence d'opendial" },
-    { name = "GPL-2.0-or-later", reason = "copyleft fort : contaminerait la licence d'opendial" },
-    { name = "GPL-3.0", reason = "copyleft fort : contaminerait la licence d'opendial" },
-    { name = "GPL-3.0-only", reason = "copyleft fort : contaminerait la licence d'opendial" },
-    { name = "GPL-3.0-or-later", reason = "copyleft fort : contaminerait la licence d'opendial" },
-    { name = "AGPL-3.0", reason = "contamination déclenchée par usage réseau" },
-    { name = "AGPL-3.0-only", reason = "contamination déclenchée par usage réseau" },
-    { name = "AGPL-3.0-or-later", reason = "contamination déclenchée par usage réseau" },
-    { name = "SSPL-1.0", reason = "licence non libre, incompatible avec l'open source" },
 ]
 
 # Ring utilise une licence composite qu'il faut déclarer pour chaque composant.
@@ -70,9 +65,12 @@ allow-registry = ["https://github.com/rust-lang/crates.io-index"]
 # ---------------------------------------------------------------------------
 [advisories]
 version = 2
+# Aucun avis ignoré : toute vulnérabilité connue doit être traitée.
 ignore = []
-# Une dépendance devenue non maintenue est signalée.
-unmaintained = "workspace"
+# `unmaintained` n'est pas fixé ici : sa syntaxe a changé selon les versions de
+# cargo-deny (chaîne ou table), et une valeur mal formée fait échouer la
+# validation du fichier entier. Le comportement par défaut suffit — les
+# dépendances non maintenues sont signalées pour le workspace.
 
 # ---------------------------------------------------------------------------
 # Versions multiples

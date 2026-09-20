@@ -26,8 +26,8 @@ check-cfg = ["cfg(frb_expand)"]
 # appelable depuis Dart. Aucune logique métier ne doit y apparaître — voir
 # docs/adr/0001 sur les conséquences d'une logique enfermée dans l'interface.
 [dependencies]
-od-core = { path = "../../crates/od-core" }
-od-ffi = { path = "../../crates/od-ffi" }
+od-core = { path = "../../crates/od-core", version = "0.1.0" }
+od-ffi = { path = "../../crates/od-ffi", version = "0.1.0" }
 flutter_rust_bridge = "=2.13.0"
 
 # Ce crate est hors du workspace (voir l'`exclude` du Cargo.toml racine) : il
