@@ -70,15 +70,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # L'action exécute cargo-deny dans un conteneur qui embarque sa propre
-      # toolchain musl. Or `rust-toolchain.toml` épingle 1.98.1 : rustup tente
-      # alors d'installer cette version dans le conteneur et échoue. On indique
-      # donc explicitement une version déjà présente, l'audit de licences ne
-      # dépendant pas de la version du compilateur.
+      # Le conteneur de l'action embarque sa propre toolchain, mais
+      # `rust-toolchain.toml` à la racine du dépôt impose 1.98.1 : rustup tente
+      # alors d'installer cette version À L'INTÉRIEUR du conteneur, échoue, et
+      # la vérification ne démarre jamais. Le paramètre `rust-version` de
+      # l'action ne suffit pas — il ne fait que définir la toolchain par
+      # défaut, sans annuler l'override du fichier.
+      #
+      # On retire donc temporairement ce fichier dans l'espace de travail de la
+      # CI. L'audit de licences analyse des métadonnées de dépendances : la
+      # version du compilateur ne l'influence pas.
+      - name: Neutraliser l'épinglage de toolchain
+        run: rm -f rust-toolchain.toml
+
       - uses: EmbarkStudios/cargo-deny-action@v2
         with:
           command: check
-          rust-version: "1.85.0"
           # Toute licence hors liste blanche, toute vulnérabilité connue ou
           # toute source non approuvée fait échouer cette étape. C'est la
           # barrière qui rend impossible l'introduction accidentelle d'une
@@ -107,6 +114,15 @@ jobs:
         with:
           channel: stable
 
+      # Outils de compilation natifs requis par `flutter build linux` :
+      # CMake et Ninja pour la chaîne de construction, clang pour le C++, GTK
+      # pour la couche graphique Linux.
+      - name: Installer les outils de compilation Linux
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            clang cmake ninja-build pkg-config libgtk-3-dev
+
       - name: Installer les dépendances
         working-directory: app
         run: flutter pub get
@@ -114,6 +130,17 @@ jobs:
       - name: Analyse statique
         working-directory: app
         run: flutter analyze
+
+      # Les tests d'intégration chargent la VRAIE bibliothèque native : elle
+      # doit donc être compilée avant. Sur un clone neuf, aucun `target/`
+      # n'existe — c'est le rôle de cargokit, déclenché par un build.
+      #
+      # Les en-têtes audio sont installés plus bas en prévision des phases 2 et
+      # 3 ; ils ne le sont pas ici puisque le pont ne dépend encore ni de cpal
+      # ni d'opus.
+      - name: Compiler la bibliothèque native
+        working-directory: app
+        run: flutter build linux --debug
 
       - name: Tests
         working-directory: app

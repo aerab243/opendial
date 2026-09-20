@@ -1,24 +1,26 @@
 # Configuration cargo-deny — application automatisée de l'ADR-0003.
 #
-# Cette configuration est la garde-fou du projet : elle rend IMPOSSIBLE
+# Cette configuration est le garde-fou du projet : elle rend IMPOSSIBLE
 # l'introduction accidentelle d'une dépendance sous licence copyleft. C'est
 # précisément ce qui manquait à MicroSIP, qui s'est soudé à PJSIP (GPLv2) et en
 # a hérité la licence de façon irréversible.
+#
+# Les clés de premier niveau reconnues par cargo-deny sont exactement :
+#   advisories, bans, licenses, sources, graph, targets, exclude, features,
+#   all-features, no-default-features, exclude-dev, output, feature-depth
+# Toute autre clé fait échouer la vérification du schéma.
 
 [graph]
-# Toutes les cibles sont analysées, y compris les dépendances de développement
-# et de build : elles ne sont pas distribuées, mais elles s'exécutent pendant
-# la construction et méritent le même examen.
-all-features = false
+# Toutes les fonctionnalités sont analysées, y compris celles désactivées par
+# défaut : `rustrtc` cache `spandsp-sys` (LGPL) derrière sa feature `t38`,
+# qu'il faut voir même sans l'activer.
+all-features = true
 
 # ---------------------------------------------------------------------------
 # Licences
 # ---------------------------------------------------------------------------
 [licenses]
 version = 2
-# Refuse toute licence absente de la liste `allow`. Une licence non déclarée
-# est traitée comme interdite (ADR-0003, liste grise).
-unused-allowed-license = "deny"
 
 # Liste blanche — licences permissives compatibles MPL-2.0.
 allow = [
@@ -38,7 +40,6 @@ allow = [
 
 # Licences explicitement refusées, avec leur motif.
 deny = [
-    # Contaminerait opendial et forcerait la GPL — l'exact opposé de l'ADR-0001.
     { name = "GPL-2.0", reason = "copyleft fort : contaminerait la licence d'opendial" },
     { name = "GPL-2.0-only", reason = "copyleft fort : contaminerait la licence d'opendial" },
     { name = "GPL-2.0-or-later", reason = "copyleft fort : contaminerait la licence d'opendial" },
@@ -51,8 +52,7 @@ deny = [
     { name = "SSPL-1.0", reason = "licence non libre, incompatible avec l'open source" },
 ]
 
-# Certaines licences ne sont acceptables que pour du code non distribué.
-# LGPL : uniquement en liaison dynamique, avec audit documenté (ADR-0003).
+# Ring utilise une licence composite qu'il faut déclarer pour chaque composant.
 [[licenses.exceptions]]
 name = "ring"
 allow = ["OpenSSL", "ISC"]
@@ -71,13 +71,14 @@ allow-registry = ["https://github.com/rust-lang/crates.io-index"]
 [advisories]
 version = 2
 ignore = []
-# Un avis de sécurité non corrigé fait échouer la CI dès qu'il paraît.
+# Une dépendance devenue non maintenue est signalée.
 unmaintained = "workspace"
 
 # ---------------------------------------------------------------------------
-# Doublons
+# Versions multiples
 # ---------------------------------------------------------------------------
-[duplicates]
-# Deux versions d'une même crate se traduisent par deux copies du code dans le
-# binaire. Signalé, sans bloquer : certaines situations sont légitimes.
-max = 2
+# `bans` (et non `duplicates`, qui n'existe pas) : deux versions d'une même
+# crate se traduisent par deux copies du code dans le binaire.
+[bans]
+multiple-versions = "warn"
+wildcards = "deny"
