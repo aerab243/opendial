@@ -10,6 +10,14 @@ members = [
     "crates/od-history",
     "crates/od-ffi",
 ]
+# Le pont Flutter (`app/rust`) est volontairement EXCLU du workspace.
+#
+# Il appartient à l'application, pas au cœur : il dépend de
+# `flutter_rust_bridge` et n'a de sens qu'Adossé à une interface Flutter.
+# L'inclure ferait dépendre `cargo test --workspace` — la vérification du
+# domaine, qui doit rester exécutable sans Flutter ni interface — d'une chaîne
+# de compilation graphique. Il se construit séparément, via `flutter build`.
+exclude = ["app/rust"]
 
 [workspace.package]
 version = "0.1.0"

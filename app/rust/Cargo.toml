@@ -1,0 +1,51 @@
+[package]
+name = "opendial_bridge"
+description = "Pont flutter_rust_bridge entre l'interface Flutter et le domaine opendial."
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.98"
+license = "MPL-2.0"
+repository = "https://github.com/aerab243/opendial"
+publish = false
+
+[lib]
+# `cdylib` produit la bibliothèque dynamique chargée par Flutter au démarrage.
+# `staticlib` et `rlib` servent respectivement au lien statique et aux tests.
+crate-type = ["cdylib", "staticlib", "rlib"]
+
+[lints.rust.unexpected_cfgs]
+# La macro `#[flutter_rust_bridge::frb]` s'appuie sur une configuration interne
+# (`frb_expand`) que le compilateur ne connaît pas, et émet donc un
+# avertissement à chaque utilisation. Ce n'est pas une erreur de notre part :
+# déclarer la configuration ici fait taire le bruit sans masquer d'autres
+# avertissements `cfg` éventuels.
+level = "warn"
+check-cfg = ["cfg(frb_expand)"]
+
+# Ce crate est un PONT, pas un adaptateur : il ne fait que rendre od-ffi
+# appelable depuis Dart. Aucune logique métier ne doit y apparaître — voir
+# docs/adr/0001 sur les conséquences d'une logique enfermée dans l'interface.
+[dependencies]
+od-core = { path = "../../crates/od-core" }
+od-ffi = { path = "../../crates/od-ffi" }
+flutter_rust_bridge = "=2.13.0"
+
+# Ce crate est hors du workspace (voir l'`exclude` du Cargo.toml racine) : il
+# ne peut donc pas hériter de `[workspace.lints]` et redéclare la politique.
+# Elle doit rester alignée sur celle de la racine, à une exception près.
+[lints.rust]
+# `deny` et non `forbid` : le code de liaison généré par flutter_rust_bridge
+# utilise légitimement `unsafe` pour lire les pointeurs fournis par Dart.
+# Or `forbid` ne peut être contourné par AUCUN `allow`, pas même localement —
+# c'est sa raison d'être. `deny` interdit tout autant dans notre code, tout en
+# permettant une exception ciblée sur le seul module généré.
+unsafe_code = "deny"
+missing_docs = "warn"
+
+[lints.clippy]
+correctness = { level = "deny", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+module_name_repetitions = "allow"
+missing_errors_doc = "allow"
+must_use_candidate = "allow"
+doc_markdown = "allow"
