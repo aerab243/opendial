@@ -1,0 +1,24 @@
+[package]
+name = "od-ffi"
+description = "opendial — façade FFI vers Flutter. Aucune logique métier."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+# Ce crate produit une bibliothèque dynamique chargée par Flutter.
+[lib]
+crate-type = ["cdylib", "staticlib", "rlib"]
+
+# od-ffi ne contient AUCUNE logique : elle traduit des appels Dart en
+# opérations du domaine et publie les événements du domaine vers Dart.
+# La bibliothèque `flutter_rust_bridge` est ajoutée en Phase 0, étape 5,
+# une fois le pont Flutter↔Rust validé par un projet témoin.
+[dependencies]
+od-core = { path = "../od-core", version = "0.1.0" }
+thiserror.workspace = true
+
+[lints]
+workspace = true

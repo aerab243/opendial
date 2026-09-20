@@ -1,0 +1,188 @@
+name: CI
+
+# La clé déclencheuse est citée : en YAML 1.1, `on` est un booléen. GitHub
+# utilise YAML 1.2 et le traite correctement, mais citer la clé rend le fichier
+# correct pour tout analyseur et écarte cette source de confusion.
+"on":
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Une nouvelle poussée sur la même branche annule l'exécution précédente :
+# inutile de faire tourner deux fois la même validation.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  # Les avertissements de compilation deviennent des erreurs : un build propre
+  # est une exigence, pas une préférence.
+  RUSTFLAGS: -D warnings
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Qualité du code Rust
+  # ---------------------------------------------------------------------------
+  rust:
+    name: Rust — format, lints, tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Installer la toolchain épinglée
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      # Les en-têtes de développement audio sont requis même si la CI ne
+      # compile pas encore cpal : les phases 2 et 3 les introduiront, et les
+      # installer dès maintenant évite une surprise plus tard.
+      - name: Installer les dépendances système
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libasound2-dev libopus-dev libclang-dev pkg-config
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Vérifier le formatage
+        run: cargo fmt --all --check
+
+      - name: Lints
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: Tests
+        run: cargo test --workspace --all-targets
+
+      - name: Documentation
+        run: cargo doc --workspace --no-deps
+        env:
+          RUSTDOCFLAGS: -D warnings
+
+  # ---------------------------------------------------------------------------
+  # Audit des dépendances — application de l'ADR-0003
+  # ---------------------------------------------------------------------------
+  licenses:
+    name: Licences et vulnérabilités
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Le conteneur de l'action embarque sa propre toolchain, mais
+      # `rust-toolchain.toml` à la racine du dépôt impose 1.98.1 : rustup tente
+      # alors d'installer cette version À L'INTÉRIEUR du conteneur, échoue, et
+      # la vérification ne démarre jamais. Le paramètre `rust-version` de
+      # l'action ne suffit pas — il ne fait que définir la toolchain par
+      # défaut, sans annuler l'override du fichier.
+      #
+      # On retire donc temporairement ce fichier dans l'espace de travail de la
+      # CI. L'audit de licences analyse des métadonnées de dépendances : la
+      # version du compilateur ne l'influence pas.
+      - name: Neutraliser l'épinglage de toolchain
+        run: rm -f rust-toolchain.toml
+
+      - uses: EmbarkStudios/cargo-deny-action@v2
+        with:
+          command: check
+          # Toute licence hors liste blanche, toute vulnérabilité connue ou
+          # toute source non approuvée fait échouer cette étape. C'est la
+          # barrière qui rend impossible l'introduction accidentelle d'une
+          # dépendance sous licence contaminante.
+
+  # ---------------------------------------------------------------------------
+  # Interface Flutter
+  # ---------------------------------------------------------------------------
+  # NOTE — ce job ne porte AUCUNE condition de présence de fichier.
+  #
+  # Une condition `if: ${{ hashFiles(...) }}` au niveau d'un job fait échouer
+  # la VALIDATION du workflow entier : GitHub rejette alors le fichier avant
+  # toute exécution, sans créer le moindre job ni produire de journal — un
+  # échec en 0 seconde, très difficile à diagnostiquer. hashFiles n'est
+  # évaluable que dans un contexte d'étape, où le runner existe.
+  #
+  # Le job tourne donc inconditionnellement : `app/pubspec.yaml` fait partie du
+  # dépôt.
+  flutter:
+    name: Flutter — analyse et tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      # Outils de compilation natifs requis par `flutter build linux` :
+      # CMake et Ninja pour la chaîne de construction, clang pour le C++, GTK
+      # pour la couche graphique Linux.
+      - name: Installer les outils de compilation Linux
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            clang cmake ninja-build pkg-config libgtk-3-dev
+
+      - name: Installer les dépendances
+        working-directory: app
+        run: flutter pub get
+
+      - name: Analyse statique
+        working-directory: app
+        run: flutter analyze
+
+      # Les tests d'intégration chargent la VRAIE bibliothèque native : elle
+      # doit donc être compilée avant. Sur un clone neuf, aucun `target/`
+      # n'existe — c'est le rôle de cargokit, déclenché par un build.
+      #
+      # Les en-têtes audio sont installés plus bas en prévision des phases 2 et
+      # 3 ; ils ne le sont pas ici puisque le pont ne dépend encore ni de cpal
+      # ni d'opus.
+      - name: Compiler la bibliothèque native
+        working-directory: app
+        run: flutter build linux --debug
+
+      - name: Tests
+        working-directory: app
+        run: flutter test
+
+  # ---------------------------------------------------------------------------
+  # Cohérence des bindings générés
+  # ---------------------------------------------------------------------------
+  # Les bindings flutter_rust_bridge sont versionnés — sans eux, un clone neuf
+  # ne compile pas. Ce job garantit qu'ils restent synchronisés avec l'API
+  # Rust : si quelqu'un modifie `app/rust/src/api/` sans régénérer, la CI
+  # échoue et indique la commande à lancer.
+  bindings:
+    name: Bindings à jour
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      # `cargo expand` est requis par le générateur pour analyser les macros.
+      - name: Installer flutter_rust_bridge_codegen
+        run: |
+          cargo install cargo-expand --locked
+          cargo install flutter_rust_bridge_codegen --version 2.13.0 --locked
+
+      - name: Installer les dépendances Flutter
+        working-directory: app
+        run: flutter pub get
+
+      - name: Régénérer les bindings
+        working-directory: app
+        run: flutter_rust_bridge_codegen generate
+
+      - name: Vérifier qu'aucun écart n'est apparu
+        run: |
+          if ! git diff --exit-code; then
+            echo "::error::Les bindings générés ne correspondent pas à l'API Rust."
+            echo "Lancez « flutter_rust_bridge_codegen generate » dans app/, puis commitez le résultat."
+            exit 1
+          fi

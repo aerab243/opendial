@@ -1,0 +1,16 @@
+[package]
+name = "od-audio"
+description = "opendial — od-audio"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+# Adaptateur : dépend du domaine, jamais l'inverse.
+[dependencies]
+od-core = { path = "../od-core", version = "0.1.0" }
+
+[lints]
+workspace = true

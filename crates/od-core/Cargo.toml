@@ -1,0 +1,21 @@
+[package]
+name = "od-core"
+description = "Domaine métier d'opendial : types, machines à états et traits-ports. Aucune I/O."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+# Ce crate est le cœur du projet : il ne dépend NI d'un runtime asynchrone,
+# NI d'une bibliothèque SIP ou média, NI de Flutter. `thiserror` est un simple
+# utilitaire de macro, sans code d'exécution.
+#
+# Toute dépendance ajoutée ici est une décision d'architecture : elle contamine
+# l'ensemble du domaine. Voir docs/adr/0002.
+[dependencies]
+thiserror.workspace = true
+
+[lints]
+workspace = true

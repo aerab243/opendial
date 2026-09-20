@@ -1,0 +1,72 @@
+# ---------------------------------------------------------------------------
+# Rust
+# ---------------------------------------------------------------------------
+# Cargo.lock est VERSIONNÉ : opendial produit un binaire distribuable, les
+# versions résolues doivent être reproductibles et auditables (ADR-0003).
+#
+# Le motif sans barre initiale couvre TOUS les répertoires `target/` du projet :
+# celui du workspace racine, mais aussi celui du crate du pont Rust
+# (`app/rust/target/`), qui est hors du workspace et produit donc le sien.
+# Un `/target/` ancré à la racine les manquerait.
+target/
+**/*.rs.bk
+*.pdb
+
+# ---------------------------------------------------------------------------
+# Flutter / Dart
+# ---------------------------------------------------------------------------
+app/.dart_tool/
+app/.flutter-plugins
+app/.flutter-plugins-dependencies
+app/build/
+app/.pub-cache/
+app/.pub/
+**/generated_plugin_registrant.dart
+
+# Bindings flutter_rust_bridge — VERSIONNÉS, volontairement.
+#
+# Le template officiel de flutter_rust_bridge les inclut dans son arborescence,
+# et c'est nécessaire : sans eux, un clone neuf ne compile pas et `flutter
+# analyze` échoue sur des imports introuvables. Les exclure obligerait chaque
+# contributeur — et la CI — à lancer la génération avant toute autre commande.
+#
+# Le risque de désynchronisation entre l'API Rust et les bindings est couvert
+# par un contrôle dédié en CI : après régénération, `git diff --exit-code`
+# détecte tout écart.
+
+# Répertoire de construction du plugin de compilation natif.
+app/rust_builder/.dart_tool/
+app/rust_builder/.packages
+
+# ---------------------------------------------------------------------------
+# Artefacts de compilation Linux desktop
+# ---------------------------------------------------------------------------
+app/linux/flutter/ephemeral/
+*.so
+*.dylib
+*.dll
+
+# ---------------------------------------------------------------------------
+# Éditeurs et outils
+# ---------------------------------------------------------------------------
+.vscode/
+.idea/
+*.swp
+*~
+
+# ---------------------------------------------------------------------------
+# Système
+# ---------------------------------------------------------------------------
+.DS_Store
+Thumbs.db
+
+# ---------------------------------------------------------------------------
+# Configuration locale Claude Code — spécifique à la machine, jamais partagée
+# ---------------------------------------------------------------------------
+.claude/settings.local.json
+
+# ---------------------------------------------------------------------------
+# Journaux et captures de débogage SIP
+# ---------------------------------------------------------------------------
+*.log
+/tmp-sip-traces/

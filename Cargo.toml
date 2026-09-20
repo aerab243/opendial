@@ -1,0 +1,120 @@
+[workspace]
+resolver = "3"
+members = [
+    "crates/od-core",
+    "crates/od-sip",
+    "crates/od-media",
+    "crates/od-audio",
+    "crates/od-config",
+    "crates/od-contacts",
+    "crates/od-history",
+    "crates/od-ffi",
+]
+# Le pont Flutter (`app/rust`) est volontairement EXCLU du workspace.
+#
+# Il appartient à l'application, pas au cœur : il dépend de
+# `flutter_rust_bridge` et n'a de sens qu'Adossé à une interface Flutter.
+# L'inclure ferait dépendre `cargo test --workspace` — la vérification du
+# domaine, qui doit rester exécutable sans Flutter ni interface — d'une chaîne
+# de compilation graphique. Il se construit séparément, via `flutter build`.
+exclude = ["app/rust"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.98"
+license = "MPL-2.0"
+repository = "https://github.com/aerab243/opendial"
+authors = ["opendial contributors"]
+
+# ---------------------------------------------------------------------------
+# Registre des dépendances approuvées.
+#
+# Les versions listées ici sont celles auditées dans docs/adr/0003-licence-et-
+# politique-dependances.md. Toute addition doit passer par une revue de licence
+# et un passage de `cargo deny` en CI.
+#
+# Les crates SIP/média ne sont PAS encore des dépendances effectives : elles
+# entrent en jeu en Phase 1 (od-sip) et Phase 2 (od-media). Les déclarer ici
+# fige dès maintenant les versions approuvées, pour qu'un `cargo add` ne tire
+# pas une version non auditée.
+# ---------------------------------------------------------------------------
+[workspace.dependencies]
+# --- Domaine (Phase 0) ---
+thiserror = "2.0"
+
+# --- Signalisation SIP (Phase 1) — MIT ---
+rsipstack = "0.6.10"
+
+# --- Média temps réel (Phase 2) — MIT ---
+# ATTENTION : ne JAMAIS activer la feature `t38` (voir ADR-0003, cas spandsp).
+rustrtc = { version = "0.3.138", default-features = false }
+
+# --- Audio I/O (Phase 2) — Apache-2.0 ---
+cpal = "0.18.2"
+
+# --- Codec Opus (Phase 3) — MIT/Apache-2.0 ---
+opus = "0.4"
+
+# --- Anti-écho desktop (Phase 3) — MIT OR BSD-3-Clause ---
+aec3 = "0.4"
+
+# --- Runtime asynchrone ---
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync"] }
+
+# --- Observabilité ---
+tracing = "0.1"
+
+# ---------------------------------------------------------------------------
+# Lints partagés
+#
+# Politique : les lints de correction (`correctness`) sont des erreurs — ils
+# signalent un bug. Les lints de style sont des avertissements : on veut les
+# voir, pas bloquer un build pour une virgule.
+# ---------------------------------------------------------------------------
+[workspace.lints.rust]
+unsafe_code = "forbid"
+missing_docs = "warn"
+unreachable_pub = "warn"
+
+[workspace.lints.clippy]
+# Correction — ce sont des bugs, pas des goûts.
+correctness = { level = "deny", priority = -1 }
+
+# Style et complexité — signalés sans bloquer.
+pedantic = { level = "warn", priority = -1 }
+module_name_repetitions = "allow"
+missing_errors_doc = "allow"
+must_use_candidate = "allow"
+
+# Le domaine manipule des types volontairement passés par valeur (petits,
+# `Copy`) : ce lint est contre-productif ici.
+trivially_copy_pass_by_ref = "allow"
+
+# `doc_markdown` exige des backticks autour de tout mot à majuscule interne.
+# Nos documents citent des noms propres — MicroSIP, PJSIP, Flutter — qui ne
+# sont pas du code : les encadrer de backticks nuirait à la lisibilité.
+doc_markdown = "allow"
+
+[workspace.lints.rustdoc]
+broken_intra_doc_links = "deny"
+
+# ---------------------------------------------------------------------------
+# Profils de build
+# ---------------------------------------------------------------------------
+
+# Les appels SIP et l'audio temps réel sont sensibles à la latence : même en
+# développement, on veut du code optimisé pour juger la qualité audio. Seul le
+# crate en cours d'édition reste en debug.
+[profile.dev]
+opt-level = 0
+
+[profile.dev.package."*"]
+opt-level = 2
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+strip = "debuginfo"
+panic = "abort"

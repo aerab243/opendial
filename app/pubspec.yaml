@@ -1,0 +1,27 @@
+name: opendial
+description: "Softphone SIP open-source — interface Flutter."
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.13.4
+
+dependencies:
+  flutter:
+    sdk: flutter
+  # Version figée : le code généré et la bibliothèque Rust doivent rester
+  # alignés sur la même version de flutter_rust_bridge. Une désynchronisation
+  # produit des erreurs de protocole à l'exécution, difficiles à diagnostiquer.
+  flutter_rust_bridge: 2.13.0
+  # Compile et lie le crate Rust `rust/` via cargokit. Sans cette dépendance,
+  # la bibliothèque native n'est jamais construite ni embarquée.
+  opendial_bridge:
+    path: rust_builder
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true

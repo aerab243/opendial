@@ -1,0 +1,29 @@
+# Configuration d'analyse statique de l'interface Flutter.
+include: package:flutter_lints/flutter.yaml
+
+analyzer:
+  exclude:
+    # Code généré par flutter_rust_bridge : reproduit par
+    # `flutter_rust_bridge_codegen generate`, jamais édité à la main.
+    - lib/src/rust/**
+    # Outil de compilation tiers (`cargokit`) embarqué par le plugin
+    # rust_builder. Il est livré avec ses propres tests, qui dépendent de
+    # `package:test` absent de nos dépendances, et déclencheraient donc des
+    # centaines d'erreurs sans rapport avec notre code.
+    - rust_builder/**
+    # Bibliothèque native Rust : analysée par `cargo clippy`, pas par Dart.
+    - rust/**
+    - build/**
+    - linux/**
+
+linter:
+  rules:
+    # Préférer les constructeurs constants lorsqu'ils sont possibles.
+    prefer_const_constructors: true
+    prefer_const_declarations: true
+    # Interdire les `print` : les traces passent par le journal du pont Rust,
+    # pour que les événements du domaine et de l'interface soient corrélés.
+    avoid_print: true
+    # Exiger un type de retour explicite sur les fonctions publiques : le
+    # contrat de l'interface doit être lisible sans inférence.
+    always_declare_return_types: true

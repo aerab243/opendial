@@ -1,0 +1,25 @@
+# Configuration de flutter_rust_bridge pour opendial.
+#
+# Ce fichier pilote la génération du code de liaison entre Dart et Rust.
+# Toute modification doit être suivie de :
+#
+#   flutter_rust_bridge_codegen generate
+#
+# Les fichiers produits sont exclus du dépôt (voir .gitignore) : ils sont
+# entièrement reproductibles à partir de cette configuration.
+
+rust_input: crate::api
+rust_root: rust/
+dart_output: lib/src/rust
+
+# Le code généré ne doit pas déclencher les lints clippy du projet : il n'est
+# pas écrit à la main et suit les conventions du générateur, pas les nôtres.
+rust_output: rust/src/frb_generated.rs
+
+# Nom de la classe Dart racine exposant l'API.
+dart_entrypoint_class_name: OpendialBridge
+
+# Les types du domaine ne sont pas sérialisables : flutter_rust_bridge génère
+# des classes Dart miroir, ce qui évite d'ajouter serde à `od-core` — le
+# domaine doit rester sans dépendance superflue.
+enable_lifetime: false
