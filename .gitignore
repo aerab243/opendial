@@ -1,0 +1,58 @@
+# ---------------------------------------------------------------------------
+# Rust
+# ---------------------------------------------------------------------------
+# Cargo.lock est VERSIONNÉ : opendial produit un binaire distribuable, les
+# versions résolues doivent être reproductibles et auditables (ADR-0003).
+/target/
+**/*.rs.bk
+*.pdb
+
+# ---------------------------------------------------------------------------
+# Flutter / Dart
+# ---------------------------------------------------------------------------
+app/.dart_tool/
+app/.flutter-plugins
+app/.flutter-plugins-dependencies
+app/build/
+app/.pub-cache/
+app/.pub/
+**/generated_plugin_registrant.dart
+
+# Bindings générés par flutter_rust_bridge : ils sont reproduits par
+# `flutter_rust_bridge_codegen generate`, donc exclus du dépôt.
+app/lib/rust/frb_generated.dart
+app/lib/rust/frb_generated.io.dart
+app/rust/src/frb_generated.rs
+
+# ---------------------------------------------------------------------------
+# Artefacts de compilation Linux desktop
+# ---------------------------------------------------------------------------
+app/linux/flutter/ephemeral/
+*.so
+*.dylib
+*.dll
+
+# ---------------------------------------------------------------------------
+# Éditeurs et outils
+# ---------------------------------------------------------------------------
+.vscode/
+.idea/
+*.swp
+*~
+
+# ---------------------------------------------------------------------------
+# Système
+# ---------------------------------------------------------------------------
+.DS_Store
+Thumbs.db
+
+# ---------------------------------------------------------------------------
+# Configuration locale Claude Code — spécifique à la machine, jamais partagée
+# ---------------------------------------------------------------------------
+.claude/settings.local.json
+
+# ---------------------------------------------------------------------------
+# Journaux et captures de débogage SIP
+# ---------------------------------------------------------------------------
+*.log
+/tmp-sip-traces/

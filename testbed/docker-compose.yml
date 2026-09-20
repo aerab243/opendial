@@ -1,0 +1,35 @@
+# Banc de test SIP — serveur Asterisk local.
+#
+# Fournit un IPBX réel pour valider l'enregistrement (Phase 1) puis les appels
+# (Phase 2), sans dépendre d'un serveur externe. Deux comptes de test sont
+# préconfigurés : 1001 et 1002.
+#
+#   docker compose -f testbed/docker-compose.yml up -d
+#   docker compose -f testbed/docker-compose.yml exec asterisk asterisk -rx "pjsip show endpoints"
+#
+# Les ports SIP (5060/udp) et RTP (10000-10100/udp) sont exposés sur l'hôte.
+
+services:
+  asterisk:
+    image: andrius/asterisk:latest
+    container_name: opendial-asterisk
+    restart: unless-stopped
+    ports:
+      # Signalisation SIP.
+      - "5060:5060/udp"
+      - "5060:5060/tcp"
+      # Média RTP — plage restreinte volontairement, pour rester lisible dans
+      # les pare-feu et faciliter le débogage.
+      - "10000-10100:10000-10100/udp"
+    volumes:
+      # Configuration montée en lecture seule : les tests ne doivent jamais
+      # pouvoir altérer l'état du dépôt.
+      - ./asterisk/pjsip.conf:/etc/asterisk/pjsip.conf:ro
+      - ./asterisk/extensions.conf:/etc/asterisk/extensions.conf:ro
+      - ./asterisk/rtp.conf:/etc/asterisk/rtp.conf:ro
+    healthcheck:
+      test: ["CMD", "asterisk", "-rx", "core show uptime"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s

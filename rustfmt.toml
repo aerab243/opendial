@@ -1,0 +1,14 @@
+# Configuration rustfmt d'opendial.
+#
+# Seules les options STABLES sont activées ici. Les options `group_imports` et
+# `imports_granularity`, bien que tentantes, exigent encore `unstable_features`
+# et donc une toolchain nightly — elles casseraient la CI stable. À réévaluer
+# le jour où rustfmt les stabilise.
+
+edition = "2024"
+max_width = 100
+tab_spaces = 4
+newline_style = "Unix"
+
+use_field_init_shorthand = true
+use_try_shorthand = true

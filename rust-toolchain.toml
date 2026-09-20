@@ -1,0 +1,6 @@
+# Épingle la toolchain pour garantir des builds reproductibles en CI et entre
+# contributeurs. Toute mise à jour est une décision explicite, tracée en PR.
+[toolchain]
+channel = "1.98.1"
+components = ["rustfmt", "clippy"]
+profile = "minimal"
