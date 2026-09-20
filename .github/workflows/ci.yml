@@ -5,7 +5,11 @@ on:
     branches: [main, phase-0-fondations]
 
 jobs:
-  ping:
+  rust:
     runs-on: ubuntu-latest
     steps:
-      - run: echo "workflow opérationnel"
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - run: cargo test --workspace
