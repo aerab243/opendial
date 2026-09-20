@@ -1,6 +1,10 @@
 name: CI
 
-on:
+# La clé `on` est volontairement entre guillemets : en YAML 1.1, les mots `on`,
+# `off`, `yes` et `no` sont interprétés comme des booléens. GitHub utilise
+# YAML 1.2 et traite `on` correctement, mais citer la clé rend le fichier
+# correct pour tout analyseur et écarte cette source de confusion.
+"on":
   push:
     branches: [main]
   pull_request:
