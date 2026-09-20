@@ -61,6 +61,7 @@ aec3 = "0.4"
 
 # --- Runtime asynchrone ---
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync"] }
+tokio-util = { version = "0.7", features = ["rt"] }
 
 # --- Observabilité ---
 tracing = "0.1"

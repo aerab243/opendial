@@ -1,6 +1,6 @@
 [package]
 name = "od-sip"
-description = "opendial — od-sip"
+description = "opendial — adaptateur de signalisation SIP (rsipstack)."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -8,9 +8,25 @@ license.workspace = true
 repository.workspace = true
 authors.workspace = true
 
-# Adaptateur : dépend du domaine, jamais l'inverse.
+# Adaptateur : implémente les ports définis par od-core. La dépendance ne
+# s'inverse jamais — c'est ce qui rend le stack SIP remplaçable.
 [dependencies]
 od-core = { path = "../od-core", version = "0.1.0" }
+
+# Signalisation SIP : RFC 3261/3262, transactions, dialogues, digest auth.
+rsipstack = { workspace = true }
+
+# Runtime asynchrone. rsipstack s'appuie dessus, et l'adaptateur en isole une
+# instance dédiée dans son propre thread : le domaine reste sans async, et
+# Flutter ne voit jamais qu'un appel bloquant.
+tokio = { workspace = true }
+tokio-util = { version = "0.7", features = ["rt"] }
+
+# Observabilité : les traces du stack SIP remontent dans le journal commun.
+tracing.workspace = true
+
+# Conversion des erreurs du domaine vers celles de l'adaptateur.
+thiserror.workspace = true
 
 [lints]
 workspace = true
