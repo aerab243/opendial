@@ -23,15 +23,16 @@ app/.pub-cache/
 app/.pub/
 **/generated_plugin_registrant.dart
 
-# Bindings générés par flutter_rust_bridge : ils sont reproduits par
-# `flutter_rust_bridge_codegen generate`, donc exclus du dépôt. Commiter du
-# code généré créerait des conflits de fusion à chaque régénération, et
-# masquerait une désynchronisation entre l'API Rust et les bindings.
-app/lib/src/rust/frb_generated.dart
-app/lib/src/rust/frb_generated.io.dart
-app/lib/src/rust/frb_generated.web.dart
-app/lib/src/rust/api/
-app/rust/src/frb_generated.rs
+# Bindings flutter_rust_bridge — VERSIONNÉS, volontairement.
+#
+# Le template officiel de flutter_rust_bridge les inclut dans son arborescence,
+# et c'est nécessaire : sans eux, un clone neuf ne compile pas et `flutter
+# analyze` échoue sur des imports introuvables. Les exclure obligerait chaque
+# contributeur — et la CI — à lancer la génération avant toute autre commande.
+#
+# Le risque de désynchronisation entre l'API Rust et les bindings est couvert
+# par un contrôle dédié en CI : après régénération, `git diff --exit-code`
+# détecte tout écart.
 
 # Répertoire de construction du plugin de compilation natif.
 app/rust_builder/.dart_tool/

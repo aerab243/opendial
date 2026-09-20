@@ -70,9 +70,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # L'action exécute cargo-deny dans un conteneur qui embarque sa propre
+      # toolchain musl. Or `rust-toolchain.toml` épingle 1.98.1 : rustup tente
+      # alors d'installer cette version dans le conteneur et échoue. On indique
+      # donc explicitement une version déjà présente, l'audit de licences ne
+      # dépendant pas de la version du compilateur.
       - uses: EmbarkStudios/cargo-deny-action@v2
         with:
           command: check
+          rust-version: "1.85.0"
           # Toute licence hors liste blanche, toute vulnérabilité connue ou
           # toute source non approuvée fait échouer cette étape. C'est la
           # barrière qui rend impossible l'introduction accidentelle d'une
@@ -86,7 +92,7 @@ jobs:
   # Une condition `if: ${{ hashFiles(...) }}` au niveau d'un job fait échouer
   # la VALIDATION du workflow entier : GitHub rejette alors le fichier avant
   # toute exécution, sans créer le moindre job ni produire de journal — un
-  # échec en 0 seconde, très difficile à diagnostiquer. `hashFiles` n'est
+  # échec en 0 seconde, très difficile à diagnostiquer. hashFiles n'est
   # évaluable que dans un contexte d'étape, où le runner existe.
   #
   # Le job tourne donc inconditionnellement : `app/pubspec.yaml` fait partie du
@@ -112,3 +118,44 @@ jobs:
       - name: Tests
         working-directory: app
         run: flutter test
+
+  # ---------------------------------------------------------------------------
+  # Cohérence des bindings générés
+  # ---------------------------------------------------------------------------
+  # Les bindings flutter_rust_bridge sont versionnés — sans eux, un clone neuf
+  # ne compile pas. Ce job garantit qu'ils restent synchronisés avec l'API
+  # Rust : si quelqu'un modifie `app/rust/src/api/` sans régénérer, la CI
+  # échoue et indique la commande à lancer.
+  bindings:
+    name: Bindings à jour
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      # `cargo expand` est requis par le générateur pour analyser les macros.
+      - name: Installer flutter_rust_bridge_codegen
+        run: |
+          cargo install cargo-expand --locked
+          cargo install flutter_rust_bridge_codegen --version 2.13.0 --locked
+
+      - name: Installer les dépendances Flutter
+        working-directory: app
+        run: flutter pub get
+
+      - name: Régénérer les bindings
+        working-directory: app
+        run: flutter_rust_bridge_codegen generate
+
+      - name: Vérifier qu'aucun écart n'est apparu
+        run: |
+          if ! git diff --exit-code; then
+            echo "::error::Les bindings générés ne correspondent pas à l'API Rust."
+            echo "Lancez « flutter_rust_bridge_codegen generate » dans app/, puis commitez le résultat."
+            exit 1
+          fi
