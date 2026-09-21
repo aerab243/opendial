@@ -118,6 +118,11 @@ class AccountView {
 ///
 /// `flutter_rust_bridge` ne peut pas transporter l'erreur du domaine telle
 /// quelle : on la réduit à un message, que Dart affiche directement.
+///
+/// Le type généré côté Dart n'implémente pas `toString()` : interpoler
+/// l'objet afficherait `Instance of 'FfiErrorInfo'` à l'utilisateur. Il faut
+/// donc **toujours lire `.message`** dans l'interface — c'est la raison pour
+/// laquelle le champ est public et unique.
 class FfiErrorInfo implements FrbException {
   /// Message prêt à être affiché.
   final String message;
