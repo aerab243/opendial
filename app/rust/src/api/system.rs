@@ -9,7 +9,7 @@
 //! appelable depuis Dart. C'est la vérification la moins coûteuse à exécuter
 //! pour diagnostiquer une chaîne de compilation cassée.
 
-use od_core::{AccountId, CallId, CallState, RegistrationState};
+use od_core::{CallId, CallState, RegistrationState};
 
 /// Version d'opendial, telle que déclarée dans le crate du domaine.
 ///
@@ -96,15 +96,12 @@ fn describe_call_state_machine() -> String {
 /// Décrit les états d'enregistrement connus du domaine.
 ///
 /// Permet à l'interface de valider qu'elle interprète correctement les chaînes
-/// de statut qu'elle recevra du domaine.
+/// de statut qu'elle recevra du domaine. Depuis la Phase 1, ces chaînes sont
+/// produites par le service de comptes ; cette sonde reste utile pour vérifier
+/// leur forme sans avoir à configurer un compte.
 #[flutter_rust_bridge::frb]
 #[must_use]
 pub fn describe_registration_states() -> Vec<String> {
-    let account = match AccountId::new("diagnostic") {
-        Ok(id) => id,
-        Err(_) => return Vec::new(),
-    };
-
     [
         RegistrationState::Unregistered,
         RegistrationState::Registering,
@@ -114,8 +111,22 @@ pub fn describe_registration_states() -> Vec<String> {
     ]
     .iter()
     .map(|state| {
-        let status = od_ffi::AccountStatus::from_state(&account, state);
-        format!("{} · {}", status.status, status.detail)
+        let (status, detail) = match state {
+            RegistrationState::Unregistered => ("unregistered".to_owned(), String::new()),
+            RegistrationState::Registering => ("registering".to_owned(), String::new()),
+            RegistrationState::Registered { expires_in } => {
+                ("registered".to_owned(), format!("{expires_in} s"))
+            }
+            RegistrationState::Failed { reason, retrying } => {
+                let detail = if *retrying {
+                    format!("{reason} (nouvelle tentative planifiée)")
+                } else {
+                    reason.clone()
+                };
+                ("failed".to_owned(), detail)
+            }
+        };
+        format!("{status} · {detail}")
     })
     .collect()
 }

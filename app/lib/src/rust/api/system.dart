@@ -27,7 +27,9 @@ Future<List<DiagnosticLine>> runDiagnostics() =>
 /// Décrit les états d'enregistrement connus du domaine.
 ///
 /// Permet à l'interface de valider qu'elle interprète correctement les chaînes
-/// de statut qu'elle recevra du domaine.
+/// de statut qu'elle recevra du domaine. Depuis la Phase 1, ces chaînes sont
+/// produites par le service de comptes ; cette sonde reste utile pour vérifier
+/// leur forme sans avoir à configurer un compte.
 Future<List<String>> describeRegistrationStates() =>
     OpendialBridge.instance.api.crateApiSystemDescribeRegistrationStates();
 

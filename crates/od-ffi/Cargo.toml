@@ -12,13 +12,14 @@ authors.workspace = true
 [lib]
 crate-type = ["cdylib", "staticlib", "rlib"]
 
-# od-ffi ne contient AUCUNE logique : elle traduit des appels Dart en
-# opérations du domaine et publie les événements du domaine vers Dart.
-# La bibliothèque `flutter_rust_bridge` est ajoutée en Phase 0, étape 5,
-# une fois le pont Flutter↔Rust validé par un projet témoin.
+# od-ffi ne contient AUCUNE logique métier : elle traduit des appels Dart en
+# opérations du domaine, et publie les événements du domaine vers Dart.
 [dependencies]
 od-core = { path = "../od-core", version = "0.1.0" }
+od-config = { path = "../od-config", version = "0.1.0" }
+od-sip = { path = "../od-sip", version = "0.1.0" }
 thiserror.workspace = true
+tracing.workspace = true
 
 [lints]
 workspace = true

@@ -16,6 +16,8 @@
 //! ## Organisation
 //!
 //! - [`system`] — diagnostic et information de version.
-//! - Les modules métier (`account`, `call`) accompagnent les phases 1 et 2.
+//! - [`accounts`] — gestion des comptes SIP (Phase 1).
+//! - Le module `calls` accompagne la Phase 2.
 
+pub mod accounts;
 pub mod system;

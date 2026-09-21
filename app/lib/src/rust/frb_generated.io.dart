@@ -3,6 +3,7 @@
 
 // ignore_for_file: unused_import, unused_element, unnecessary_import, duplicate_ignore, invalid_use_of_internal_member, annotate_overrides, non_constant_identifier_names, curly_braces_in_flow_control_structures, prefer_const_literals_to_create_immutables, unused_field
 
+import 'api/accounts.dart';
 import 'api/system.dart';
 
 import 'dart:async';
@@ -26,10 +27,16 @@ abstract class OpendialBridgeApiImplPlatform
   String dco_decode_String(dynamic raw);
 
   @protected
+  AccountView dco_decode_account_view(dynamic raw);
+
+  @protected
   bool dco_decode_bool(dynamic raw);
 
   @protected
   DiagnosticLine dco_decode_diagnostic_line(dynamic raw);
+
+  @protected
+  FfiErrorInfo dco_decode_ffi_error_info(dynamic raw);
 
   @protected
   int dco_decode_i_32(dynamic raw);
@@ -38,10 +45,16 @@ abstract class OpendialBridgeApiImplPlatform
   List<String> dco_decode_list_String(dynamic raw);
 
   @protected
+  List<AccountView> dco_decode_list_account_view(dynamic raw);
+
+  @protected
   List<DiagnosticLine> dco_decode_list_diagnostic_line(dynamic raw);
 
   @protected
   Uint8List dco_decode_list_prim_u_8_strict(dynamic raw);
+
+  @protected
+  int dco_decode_u_16(dynamic raw);
 
   @protected
   int dco_decode_u_8(dynamic raw);
@@ -53,10 +66,16 @@ abstract class OpendialBridgeApiImplPlatform
   String sse_decode_String(SseDeserializer deserializer);
 
   @protected
+  AccountView sse_decode_account_view(SseDeserializer deserializer);
+
+  @protected
   bool sse_decode_bool(SseDeserializer deserializer);
 
   @protected
   DiagnosticLine sse_decode_diagnostic_line(SseDeserializer deserializer);
+
+  @protected
+  FfiErrorInfo sse_decode_ffi_error_info(SseDeserializer deserializer);
 
   @protected
   int sse_decode_i_32(SseDeserializer deserializer);
@@ -65,12 +84,18 @@ abstract class OpendialBridgeApiImplPlatform
   List<String> sse_decode_list_String(SseDeserializer deserializer);
 
   @protected
+  List<AccountView> sse_decode_list_account_view(SseDeserializer deserializer);
+
+  @protected
   List<DiagnosticLine> sse_decode_list_diagnostic_line(
     SseDeserializer deserializer,
   );
 
   @protected
   Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer);
+
+  @protected
+  int sse_decode_u_16(SseDeserializer deserializer);
 
   @protected
   int sse_decode_u_8(SseDeserializer deserializer);
@@ -82,6 +107,9 @@ abstract class OpendialBridgeApiImplPlatform
   void sse_encode_String(String self, SseSerializer serializer);
 
   @protected
+  void sse_encode_account_view(AccountView self, SseSerializer serializer);
+
+  @protected
   void sse_encode_bool(bool self, SseSerializer serializer);
 
   @protected
@@ -91,10 +119,19 @@ abstract class OpendialBridgeApiImplPlatform
   );
 
   @protected
+  void sse_encode_ffi_error_info(FfiErrorInfo self, SseSerializer serializer);
+
+  @protected
   void sse_encode_i_32(int self, SseSerializer serializer);
 
   @protected
   void sse_encode_list_String(List<String> self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_list_account_view(
+    List<AccountView> self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_list_diagnostic_line(
@@ -107,6 +144,9 @@ abstract class OpendialBridgeApiImplPlatform
     Uint8List self,
     SseSerializer serializer,
   );
+
+  @protected
+  void sse_encode_u_16(int self, SseSerializer serializer);
 
   @protected
   void sse_encode_u_8(int self, SseSerializer serializer);
