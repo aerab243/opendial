@@ -3,6 +3,7 @@
 
 // ignore_for_file: unused_import, unused_element, unnecessary_import, duplicate_ignore, invalid_use_of_internal_member, annotate_overrides, non_constant_identifier_names, curly_braces_in_flow_control_structures, prefer_const_literals_to_create_immutables, unused_field
 
+import 'api/accounts.dart';
 import 'api/system.dart';
 
 import 'dart:async';
@@ -73,7 +74,7 @@ class OpendialBridge
   String get codegenVersion => '2.13.0';
 
   @override
-  int get rustContentHash => -1640289279;
+  int get rustContentHash => 968492001;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -87,7 +88,23 @@ class OpendialBridge
 abstract class OpendialBridgeApi extends BaseApi {
   int crateApiSystemAdd({required int a, required int b});
 
+  Future<AccountView> crateApiAccountsAddAccount({
+    required String label,
+    required String username,
+    required String password,
+    required String server,
+    required String transport,
+  });
+
   Future<List<String>> crateApiSystemDescribeRegistrationStates();
+
+  Future<List<AccountView>> crateApiAccountsListAccounts();
+
+  Future<AccountView> crateApiAccountsRegisterAccount({
+    required String accountId,
+  });
+
+  Future<void> crateApiAccountsRemoveAccount({required String accountId});
 
   Future<List<DiagnosticLine>> crateApiSystemRunDiagnostics();
 
@@ -128,6 +145,46 @@ class OpendialBridgeApiImpl extends OpendialBridgeApiImplPlatform
       const TaskConstMeta(debugName: "add", argNames: ["a", "b"]);
 
   @override
+  Future<AccountView> crateApiAccountsAddAccount({
+    required String label,
+    required String username,
+    required String password,
+    required String server,
+    required String transport,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(label, serializer);
+          sse_encode_String(username, serializer);
+          sse_encode_String(password, serializer);
+          sse_encode_String(server, serializer);
+          sse_encode_String(transport, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 2,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_account_view,
+          decodeErrorData: sse_decode_ffi_error_info,
+        ),
+        constMeta: kCrateApiAccountsAddAccountConstMeta,
+        argValues: [label, username, password, server, transport],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiAccountsAddAccountConstMeta => const TaskConstMeta(
+    debugName: "add_account",
+    argNames: ["label", "username", "password", "server", "transport"],
+  );
+
+  @override
   Future<List<String>> crateApiSystemDescribeRegistrationStates() {
     return handler.executeNormal(
       NormalTask(
@@ -136,7 +193,7 @@ class OpendialBridgeApiImpl extends OpendialBridgeApiImplPlatform
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 2,
+            funcId: 3,
             port: port_,
           );
         },
@@ -158,6 +215,94 @@ class OpendialBridgeApiImpl extends OpendialBridgeApiImplPlatform
       );
 
   @override
+  Future<List<AccountView>> crateApiAccountsListAccounts() {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 4,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_account_view,
+          decodeErrorData: sse_decode_ffi_error_info,
+        ),
+        constMeta: kCrateApiAccountsListAccountsConstMeta,
+        argValues: [],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiAccountsListAccountsConstMeta =>
+      const TaskConstMeta(debugName: "list_accounts", argNames: []);
+
+  @override
+  Future<AccountView> crateApiAccountsRegisterAccount({
+    required String accountId,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(accountId, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 5,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_account_view,
+          decodeErrorData: sse_decode_ffi_error_info,
+        ),
+        constMeta: kCrateApiAccountsRegisterAccountConstMeta,
+        argValues: [accountId],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiAccountsRegisterAccountConstMeta =>
+      const TaskConstMeta(
+        debugName: "register_account",
+        argNames: ["accountId"],
+      );
+
+  @override
+  Future<void> crateApiAccountsRemoveAccount({required String accountId}) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(accountId, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 6,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_ffi_error_info,
+        ),
+        constMeta: kCrateApiAccountsRemoveAccountConstMeta,
+        argValues: [accountId],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiAccountsRemoveAccountConstMeta =>
+      const TaskConstMeta(debugName: "remove_account", argNames: ["accountId"]);
+
+  @override
   Future<List<DiagnosticLine>> crateApiSystemRunDiagnostics() {
     return handler.executeNormal(
       NormalTask(
@@ -166,7 +311,7 @@ class OpendialBridgeApiImpl extends OpendialBridgeApiImplPlatform
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 3,
+            funcId: 7,
             port: port_,
           );
         },
@@ -190,7 +335,7 @@ class OpendialBridgeApiImpl extends OpendialBridgeApiImplPlatform
       SyncTask(
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 4)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 8)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_String,
@@ -213,6 +358,24 @@ class OpendialBridgeApiImpl extends OpendialBridgeApiImplPlatform
   }
 
   @protected
+  AccountView dco_decode_account_view(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 8)
+      throw Exception('unexpected arr length: expect 8 but see ${arr.length}');
+    return AccountView(
+      id: dco_decode_String(arr[0]),
+      label: dco_decode_String(arr[1]),
+      addressOfRecord: dco_decode_String(arr[2]),
+      registrarHost: dco_decode_String(arr[3]),
+      registrarPort: dco_decode_u_16(arr[4]),
+      transport: dco_decode_String(arr[5]),
+      status: dco_decode_String(arr[6]),
+      statusDetail: dco_decode_String(arr[7]),
+    );
+  }
+
+  @protected
   bool dco_decode_bool(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw as bool;
@@ -232,6 +395,15 @@ class OpendialBridgeApiImpl extends OpendialBridgeApiImplPlatform
   }
 
   @protected
+  FfiErrorInfo dco_decode_ffi_error_info(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 1)
+      throw Exception('unexpected arr length: expect 1 but see ${arr.length}');
+    return FfiErrorInfo(message: dco_decode_String(arr[0]));
+  }
+
+  @protected
   int dco_decode_i_32(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw as int;
@@ -244,6 +416,12 @@ class OpendialBridgeApiImpl extends OpendialBridgeApiImplPlatform
   }
 
   @protected
+  List<AccountView> dco_decode_list_account_view(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_account_view).toList();
+  }
+
+  @protected
   List<DiagnosticLine> dco_decode_list_diagnostic_line(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return (raw as List<dynamic>).map(dco_decode_diagnostic_line).toList();
@@ -253,6 +431,12 @@ class OpendialBridgeApiImpl extends OpendialBridgeApiImplPlatform
   Uint8List dco_decode_list_prim_u_8_strict(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw as Uint8List;
+  }
+
+  @protected
+  int dco_decode_u_16(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw as int;
   }
 
   @protected
@@ -275,6 +459,29 @@ class OpendialBridgeApiImpl extends OpendialBridgeApiImplPlatform
   }
 
   @protected
+  AccountView sse_decode_account_view(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_id = sse_decode_String(deserializer);
+    var var_label = sse_decode_String(deserializer);
+    var var_addressOfRecord = sse_decode_String(deserializer);
+    var var_registrarHost = sse_decode_String(deserializer);
+    var var_registrarPort = sse_decode_u_16(deserializer);
+    var var_transport = sse_decode_String(deserializer);
+    var var_status = sse_decode_String(deserializer);
+    var var_statusDetail = sse_decode_String(deserializer);
+    return AccountView(
+      id: var_id,
+      label: var_label,
+      addressOfRecord: var_addressOfRecord,
+      registrarHost: var_registrarHost,
+      registrarPort: var_registrarPort,
+      transport: var_transport,
+      status: var_status,
+      statusDetail: var_statusDetail,
+    );
+  }
+
+  @protected
   bool sse_decode_bool(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return deserializer.buffer.getUint8() != 0;
@@ -287,6 +494,13 @@ class OpendialBridgeApiImpl extends OpendialBridgeApiImplPlatform
     var var_value = sse_decode_String(deserializer);
     var var_ok = sse_decode_bool(deserializer);
     return DiagnosticLine(label: var_label, value: var_value, ok: var_ok);
+  }
+
+  @protected
+  FfiErrorInfo sse_decode_ffi_error_info(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_message = sse_decode_String(deserializer);
+    return FfiErrorInfo(message: var_message);
   }
 
   @protected
@@ -303,6 +517,18 @@ class OpendialBridgeApiImpl extends OpendialBridgeApiImplPlatform
     var ans_ = <String>[];
     for (var idx_ = 0; idx_ < len_; ++idx_) {
       ans_.add(sse_decode_String(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  List<AccountView> sse_decode_list_account_view(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <AccountView>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_account_view(deserializer));
     }
     return ans_;
   }
@@ -329,6 +555,12 @@ class OpendialBridgeApiImpl extends OpendialBridgeApiImplPlatform
   }
 
   @protected
+  int sse_decode_u_16(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return deserializer.buffer.getUint16();
+  }
+
+  @protected
   int sse_decode_u_8(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return deserializer.buffer.getUint8();
@@ -343,6 +575,19 @@ class OpendialBridgeApiImpl extends OpendialBridgeApiImplPlatform
   void sse_encode_String(String self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_list_prim_u_8_strict(utf8.encoder.convert(self), serializer);
+  }
+
+  @protected
+  void sse_encode_account_view(AccountView self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.id, serializer);
+    sse_encode_String(self.label, serializer);
+    sse_encode_String(self.addressOfRecord, serializer);
+    sse_encode_String(self.registrarHost, serializer);
+    sse_encode_u_16(self.registrarPort, serializer);
+    sse_encode_String(self.transport, serializer);
+    sse_encode_String(self.status, serializer);
+    sse_encode_String(self.statusDetail, serializer);
   }
 
   @protected
@@ -363,6 +608,12 @@ class OpendialBridgeApiImpl extends OpendialBridgeApiImplPlatform
   }
 
   @protected
+  void sse_encode_ffi_error_info(FfiErrorInfo self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.message, serializer);
+  }
+
+  @protected
   void sse_encode_i_32(int self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     serializer.buffer.putInt32(self);
@@ -374,6 +625,18 @@ class OpendialBridgeApiImpl extends OpendialBridgeApiImplPlatform
     sse_encode_i_32(self.length, serializer);
     for (final item in self) {
       sse_encode_String(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_list_account_view(
+    List<AccountView> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_account_view(item, serializer);
     }
   }
 
@@ -397,6 +660,12 @@ class OpendialBridgeApiImpl extends OpendialBridgeApiImplPlatform
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_i_32(self.length, serializer);
     serializer.buffer.putUint8List(self);
+  }
+
+  @protected
+  void sse_encode_u_16(int self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    serializer.buffer.putUint16(self);
   }
 
   @protected

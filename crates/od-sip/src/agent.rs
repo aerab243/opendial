@@ -30,18 +30,30 @@
 //! permanence pour recevoir les requêtes entrantes et rafraîchir
 //! l'enregistrement avant expiration. Un runtime créé par appel mourrait à
 //! chaque retour, et le compte deviendrait injoignable en silence.
+//!
+//! ## Limite connue : l'abandon côté appelant
+//!
+//! Si une opération dépasse [`OPERATION_TIMEOUT`], l'appelant reçoit une
+//! erreur mais **le thread de signalisation poursuit la requête en cours** :
+//! SIP continue ses retransmissions jusqu'à `Timer B` (32 s). Le résultat
+//! tardif est simplement ignoré.
+//!
+//! Conséquence pratique : après un timeout, un nouvel essai peut cohabiter
+//! avec la requête abandonnée. Le serveur reçoit alors deux `REGISTER` pour le
+//! même contact — ce qui est sans gravité, le second écrasant le premier. Une
+//! annulation propre demanderait d'interrompre une transaction SIP en vol, ce
+//! que rsipstack n'expose pas aujourd'hui.
 
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::sync::mpsc;
 use std::thread;
 
-use od_core::{
-    Account, AccountId, RegistrationState, SignalingError, SignalingPort,
-};
-use rsipstack::dialog::registration::Registration;
-use rsipstack::transport::udp::UdpConnection;
-use rsipstack::transport::TransportLayer;
+use od_core::{Account, AccountId, RegistrationState, SignalingError, SignalingPort};
 use rsipstack::EndpointBuilder;
+use rsipstack::dialog::registration::Registration;
+use rsipstack::sip as rsip;
+use rsipstack::transport::TransportLayer;
+use rsipstack::transport::udp::UdpConnection;
 use tokio_util::sync::CancellationToken;
 use tracing::{debug, error, info};
 
@@ -50,11 +62,23 @@ use crate::mapping;
 
 /// Délai maximal accordé à une opération de signalisation.
 ///
-/// Un serveur SIP injoignable laisse la socket en attente indéfiniment : sans
-/// cette borne, l'interface se figerait sur un appel bloqué. Trente secondes
-/// couvrent largement un enregistrement sur un serveur distant, et restent
-/// tolérables pour l'utilisateur en cas d'échec.
-const OPERATION_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(30);
+/// # Pourquoi douze secondes
+///
+/// Le protocole SIP retransmet une requête sans réponse selon un espacement
+/// exponentiel (RFC 3261 §17.1.2.2) : 500 ms, 1 s, 2 s, 4 s, puis 8 s. Un
+/// serveur injoignable n'est donc signalé qu'au bout de `Timer B`, soit
+/// **32 secondes** — mesuré sur ce projet. Laisser l'utilisateur attendre
+/// aussi longtemps pour un simple port fermé est inacceptable : il conclut à
+/// un blocage de l'application.
+///
+/// Douze secondes couvrent les cinq premières retransmissions, largement de
+/// quoi atteindre un serveur distant légitime, tout en rendant l'échec
+/// exploitable. Passé ce délai, l'erreur est marquée **réessayable** — le
+/// serveur est peut-être simplement lent, et une reprise manuelle aboutira.
+///
+/// Ce n'est pas une limite du protocole mais une décision d'ergonomie : le
+/// protocole, lui, continuerait d'attendre.
+const OPERATION_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(12);
 
 /// Commande adressée au thread de signalisation.
 enum Command {
@@ -64,8 +88,13 @@ enum Command {
         reply: mpsc::Sender<Result<RegistrationState, AdaptError>>,
     },
     /// Désenregistre un compte.
+    ///
+    /// Porte l'URI du serveur : elle n'est pas conservée par `Registration`,
+    /// et le thread de signalisation n'a aucun accès au domaine pour la
+    /// reconstruire.
     Unregister {
         account_id: AccountId,
+        server: Box<rsip::Uri>,
         reply: mpsc::Sender<Result<(), AdaptError>>,
     },
 }
@@ -76,6 +105,12 @@ enum Command {
 /// L'agent est arrêté proprement lorsqu'il est relâché : le jeton
 /// d'annulation est déclenché et le thread est rejoint.
 pub struct SipAgent {
+    /// Comptes déjà vus, pour retrouver leur registrar lors d'une
+    /// désinscription.
+    ///
+    /// Le port `unregister` ne reçoit qu'un identifiant de compte : sans cette
+    /// table, l'agent ne saurait pas quel serveur prévenir.
+    last_accounts: std::collections::HashMap<AccountId, Account>,
     /// Canal d'envoi des commandes vers le thread de signalisation.
     commands: Option<mpsc::Sender<Command>>,
     /// Poignée du thread, pour un arrêt propre.
@@ -112,6 +147,7 @@ impl SipAgent {
             Ok(Ok(())) => {
                 info!(port = local_port, "agent de signalisation démarré");
                 Ok(Self {
+                    last_accounts: std::collections::HashMap::new(),
                     commands: Some(command_tx),
                     thread: Some(thread),
                     cancel,
@@ -147,9 +183,11 @@ impl SipAgent {
         // thread bloqué figerait l'interface indéfiniment.
         match reply_rx.recv_timeout(OPERATION_TIMEOUT) {
             Ok(result) => result,
-            Err(mpsc::RecvTimeoutError::Timeout) => Err(AdaptError::Timeout(
-                "aucune réponse du service de signalisation".to_owned(),
-            )),
+            Err(mpsc::RecvTimeoutError::Timeout) => Err(AdaptError::Timeout(format!(
+                "le serveur n'a pas répondu en {} secondes — \
+                 vérifiez l'adresse et le port, ou que l'hôte est joignable",
+                OPERATION_TIMEOUT.as_secs()
+            ))),
             Err(mpsc::RecvTimeoutError::Disconnected) => Err(AdaptError::NotRunning),
         }
     }
@@ -157,6 +195,10 @@ impl SipAgent {
 
 impl SignalingPort for SipAgent {
     fn register(&mut self, account: &Account) -> Result<RegistrationState, SignalingError> {
+        // On mémorise le compte : `unregister` ne reçoit qu'un identifiant et
+        // doit pouvoir retrouver l'URI du registrar.
+        self.last_accounts
+            .insert(account.id.clone(), account.clone());
         let account = account.clone();
         self.request(|reply| Command::Register {
             account: Box::new(account),
@@ -166,9 +208,30 @@ impl SignalingPort for SipAgent {
     }
 
     fn unregister(&mut self, account_id: &AccountId) -> Result<(), SignalingError> {
+        // Le port ne reçoit qu'un identifiant : il faut retrouver le compte
+        // pour connaître son registrar. `od-core` ne transmet pas le compte
+        // ici, car un adaptateur doit pouvoir désenregistrer à partir du seul
+        // identifiant.
         let account_id = account_id.clone();
-        self.request(|reply| Command::Unregister { account_id, reply })
-            .map_err(|error| error.to_signaling_error())
+        let server = self
+            .last_accounts
+            .get(&account_id)
+            .map(mapping::registrar_uri)
+            .transpose()
+            .map_err(|error| error.to_signaling_error())?;
+
+        let Some(server) = server else {
+            // Compte jamais enregistré par cet agent : rien à faire côté
+            // serveur, et ce n'est pas une erreur.
+            return Ok(());
+        };
+
+        self.request(|reply| Command::Unregister {
+            account_id,
+            server: Box::new(server),
+            reply,
+        })
+        .map_err(|error| error.to_signaling_error())
     }
 
     fn start_call(
@@ -242,22 +305,17 @@ fn run_agent_thread(
     runtime.block_on(async move {
         // --- Ouverture de la socket locale ---------------------------------
         let local = SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), local_port);
-        let connection = match UdpConnection::create_connection(
-            local,
-            None,
-            Some(cancel.child_token()),
-        )
-        .await
-        {
-            Ok(connection) => connection,
-            Err(error) => {
-                let _ = ready.send(Err(mapping::adapt_error(
-                    &format!("ouverture du port {local_port}"),
-                    error,
-                )));
-                return;
-            }
-        };
+        let connection =
+            match UdpConnection::create_connection(local, None, Some(cancel.child_token())).await {
+                Ok(connection) => connection,
+                Err(error) => {
+                    let _ = ready.send(Err(mapping::adapt_error(
+                        &format!("ouverture du port {local_port}"),
+                        error,
+                    )));
+                    return;
+                }
+            };
 
         // --- Construction de l'endpoint ------------------------------------
         let transport_layer = TransportLayer::new(cancel.child_token());
@@ -317,9 +375,13 @@ fn run_agent_thread(
                         handle_register(&endpoint_inner, &mut registrations, *account).await;
                     let _ = reply.send(result);
                 }
-                Command::Unregister { account_id, reply } => {
-                    registrations.remove(&account_id);
-                    let _ = reply.send(Ok(()));
+                Command::Unregister {
+                    account_id,
+                    server,
+                    reply,
+                } => {
+                    let result = handle_unregister(&mut registrations, &account_id, *server).await;
+                    let _ = reply.send(result);
                 }
             }
         }
@@ -376,6 +438,50 @@ async fn handle_register(
     Ok(state)
 }
 
+/// Traite une commande de désenregistrement.
+///
+/// # Pourquoi prévenir le serveur
+///
+/// Retirer l'objet local ne suffit pas : le serveur conserve le contact
+/// jusqu'à son expiration — cinq minutes avec la durée par défaut. Pendant ce
+/// temps, il continuerait de router les appels vers un poste que l'utilisateur
+/// croit avoir retiré.
+///
+/// La désinscription se fait en renvoyant un `REGISTER` avec une expiration
+/// nulle (RFC 3261 §10.2.2). C'est la seule façon de faire oublier un contact
+/// immédiatement.
+///
+/// L'URI du serveur doit être fournie : `Registration` ne conserve pas celle
+/// avec laquelle il a été créé, et il faut la répéter pour la désinscription.
+async fn handle_unregister(
+    registrations: &mut std::collections::HashMap<AccountId, Registration>,
+    account_id: &AccountId,
+    server: rsip::Uri,
+) -> Result<(), AdaptError> {
+    let Some(mut registration) = registrations.remove(account_id) else {
+        // Compte jamais enregistré : rien à signaler au serveur.
+        debug!(account = %account_id, "désinscription d'un compte non enregistré");
+        return Ok(());
+    };
+
+    // `Some(0)` demande l'expiration immédiate du contact — c'est la
+    // convention SIP pour une désinscription.
+    let response = registration
+        .register(server, Some(0))
+        .await
+        .map_err(|error| mapping::adapt_error("désinscription", error))?;
+
+    if response.status_code == rsip::StatusCode::OK {
+        info!(account = %account_id, "compte désenregistré");
+        Ok(())
+    } else {
+        Err(mapping::adapt_error(
+            "désinscription",
+            format!("réponse inattendue {}", response.status_code.code()),
+        ))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -424,7 +530,10 @@ mod tests {
         let error = agent
             .start_call(&account.id, "1002")
             .expect_err("non implémenté en phase 1");
-        assert!(!error.retryable, "l'absence de fonctionnalité est définitive");
+        assert!(
+            !error.retryable,
+            "l'absence de fonctionnalité est définitive"
+        );
         assert!(
             error.message.contains("Phase 2"),
             "le message doit indiquer la phase : {}",

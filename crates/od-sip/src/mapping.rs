@@ -58,7 +58,10 @@ pub(crate) fn user_uri(account: &Account) -> Result<rsip::Uri, AdaptError> {
     } else {
         format!("{}@{}", account.address_of_record, account.registrar.host)
     };
-    let uri = format!("{}:{address}", transport_scheme(account.registrar.transport));
+    let uri = format!(
+        "{}:{address}",
+        transport_scheme(account.registrar.transport)
+    );
 
     uri.parse::<rsip::Uri>()
         .map_err(|_| AdaptError::invalid_uri(uri))
@@ -113,10 +116,7 @@ pub(crate) fn registration_state_from_response(
         // 5xx : le serveur est en difficulté, mais la configuration est
         // correcte. Une reprise est pertinente.
         other if other.kind() == rsip::StatusCodeKind::ServerFailure => {
-            RegistrationState::failed_retrying(format!(
-                "erreur du serveur ({})",
-                other.code()
-            ))
+            RegistrationState::failed_retrying(format!("erreur du serveur ({})", other.code()))
         }
         // 408 et 480 : le serveur n'a pas répondu à temps, ou le poste est
         // injoignable. Transitoire.
@@ -203,7 +203,10 @@ mod tests {
         let account = account_with(Transport::Tls, Some(5061));
         let uri = registrar_uri(&account).expect("URI valide");
         let rendered = uri.to_string();
-        assert!(rendered.starts_with("sips:"), "schéma attendu sips : {rendered}");
+        assert!(
+            rendered.starts_with("sips:"),
+            "schéma attendu sips : {rendered}"
+        );
         assert!(rendered.contains("5061"), "port attendu 5061 : {rendered}");
     }
 
@@ -212,7 +215,10 @@ mod tests {
         let account = account_with(Transport::Udp, None);
         let uri = user_uri(&account).expect("URI valide");
         let rendered = uri.to_string();
-        assert!(rendered.contains("1001"), "utilisateur attendu : {rendered}");
+        assert!(
+            rendered.contains("1001"),
+            "utilisateur attendu : {rendered}"
+        );
         assert!(
             rendered.contains("pbx.example.com"),
             "domaine attendu : {rendered}"

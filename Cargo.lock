@@ -960,6 +960,8 @@ name = "od-config"
 version = "0.1.0"
 dependencies = [
  "od-core",
+ "thiserror",
+ "tracing",
 ]
 
 [[package]]
@@ -980,8 +982,11 @@ dependencies = [
 name = "od-ffi"
 version = "0.1.0"
 dependencies = [
+ "od-config",
  "od-core",
+ "od-sip",
  "thiserror",
+ "tracing",
 ]
 
 [[package]]

@@ -64,7 +64,5 @@ pub use call::{Call, CallDirection, CallEvent, CallId, CallState, EndReason};
 pub use error::{DomainError, TransitionError};
 // Les traits-ports et leurs erreurs sont réexportés à la racine : ce sont les
 // types que les adaptateurs implémentent et manipulent en premier.
-pub use ports::{
-    MediaError, MediaPort, MediaSessionInfo, SignalingError, SignalingPort,
-};
+pub use ports::{MediaError, MediaPort, MediaSessionInfo, SignalingError, SignalingPort};
 pub use registration::{RegistrationEvent, RegistrationState};

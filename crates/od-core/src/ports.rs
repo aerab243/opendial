@@ -91,7 +91,17 @@ impl std::error::Error for SignalingError {}
 /// C'est le contrat que tout stack SIP doit satisfaire pour être utilisable par
 /// opendial. L'implémentation de référence est `od-sip` (rsipstack), mais le
 /// domaine n'en sait rien.
-pub trait SignalingPort {
+///
+/// # Pourquoi `Send`
+///
+/// La contrainte `Send` vient de l'interface : Flutter doit pouvoir détenir un
+/// service de longue durée dans un état partagé, accessible depuis plusieurs
+/// fils d'exécution. Un adaptateur non `Send` forcerait la FFI à sérialiser
+/// tous les appels sur un seul thread, ce qui nuirait à la réactivité.
+///
+/// Elle n'a aucun coût pour les implémentations en mémoire : la plupart des
+/// types le sont déjà naturellement.
+pub trait SignalingPort: Send {
     /// Enregistre un compte auprès de son registrar (RFC 3261 §10).
     ///
     /// # Erreurs
@@ -147,7 +157,10 @@ pub trait SignalingPort {
 /// Distinct du port de signalisation : c'est le principe même du découpage.
 /// L'audio entrant dans un appel peut se régler sans parler au serveur, et la
 /// négociation SDP se conduit sans toucher à la carte son.
-pub trait MediaPort {
+///
+/// La contrainte `Send` suit la même raison que pour [`SignalingPort`] : le
+/// service doit pouvoir être partagé entre les fils d'exécution de la FFI.
+pub trait MediaPort: Send {
     /// Ouvre une session média à partir d'un flux SDP négocié.
     ///
     /// # Erreurs

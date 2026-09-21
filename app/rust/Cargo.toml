@@ -28,6 +28,8 @@ check-cfg = ["cfg(frb_expand)"]
 [dependencies]
 od-core = { path = "../../crates/od-core", version = "0.1.0" }
 od-ffi = { path = "../../crates/od-ffi", version = "0.1.0" }
+od-sip = { path = "../../crates/od-sip", version = "0.1.0" }
+
 flutter_rust_bridge = "=2.13.0"
 
 # Ce crate est hors du workspace (voir l'`exclude` du Cargo.toml racine) : il
